@@ -57,6 +57,26 @@
             border: 2px solid #3b82f6;
             border-radius: 8px;
             padding: 1rem;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .qr-field {
+            display: grid;
+            gap: 0.25rem;
+        }
+
+        .qr-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+
+        .qr-value {
+            font-size: 1.1rem;
+            color: #3b82f6;
+            font-weight: 600;
+            word-break: break-all;
         }
 
         .hidden { display: none; }
@@ -71,15 +91,21 @@
 
 <body>
 <div class="container">
-    <h1>📱 GFG Founders Unplugged Registration</h1>
+    <h1>📱 GFG Founders Unplugged registration</h1>
 
     <div id="reader"></div>
 
     <div id="status" class="status idle">Ready to scan</div>
 
     <div id="qrBox" class="qr-box hidden">
-        <strong>Scanned Code:</strong>
-        <div id="qrValue"></div>
+        <div class="qr-field">
+            <div class="qr-label">Registration Number:</div>
+            <div id="qrReg" class="qr-value">-</div>
+        </div>
+        <div class="qr-field">
+            <div class="qr-label">Name:</div>
+            <div id="qrName" class="qr-value">-</div>
+        </div>
     </div>
 
     <p class="info-text">Point camera at QR code</p>
@@ -114,7 +140,8 @@ async function onScanSuccess(decodedText) {
     processing = true;
 
     const regNo = decodedText.trim();
-    document.getElementById("qrValue").innerText = regNo;
+    document.getElementById("qrReg").innerText = regNo;
+    document.getElementById("qrName").innerText = "Loading...";
     document.getElementById("qrBox").classList.remove("hidden");
 
     // Show loading state
@@ -124,11 +151,16 @@ async function onScanSuccess(decodedText) {
         const data = await verifyRegistration(regNo);
         console.log("Backend response:", data);
 
+        // Display name and registration
+        if (data.name) {
+            document.getElementById("qrName").innerText = data.name;
+        }
+
         if (data.status === "success") {
-            setStatus(`✅ ${data.name}${data.registration_number} - Attendance marked!`, "success");
+            setStatus(`✅ ${regNo} - ${data.name} - Marked!`, "success");
         }
         else if (data.status === "already_marked") {
-            setStatus(`⚠️ ${data.name} - Already marked!`, "warning");
+            setStatus(`⚠️ ${regNo} - ${data.name} - Already marked!`, "warning");
         }
         else if (data.status === "not_registered") {
             setStatus("❌ Registration not found", "error");

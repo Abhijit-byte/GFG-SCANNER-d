@@ -46,7 +46,8 @@ def scan_qr(request):
             return JsonResponse({
                 "status": "already_marked",
                 "name": attendee.name,
-                "message": f"{attendee.name} - Already marked"
+                "registration_number": attendee.registration_number,
+                "message": f"{attendee.registration_number} - {attendee.name} - Already marked"
             }, status=200)
         
         # Mark attendance
@@ -58,7 +59,8 @@ def scan_qr(request):
         return JsonResponse({
             "status": "success",
             "name": attendee.name,
-            "message": f"{attendee.name} - Attendance marked"
+            "registration_number": attendee.registration_number,
+            "message": f"{attendee.registration_number} - {attendee.name} - Attendance marked"
         }, status=200)
     
     except Exception as e:
