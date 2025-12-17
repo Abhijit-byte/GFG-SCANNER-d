@@ -78,108 +78,72 @@
 </div>
 
 <script>
-/* ================= CONFIG ================= */
-const API_URL = "https://gfg-scanner-d.onrender.com/scan/";
-const RESET_DELAY = 2500;
+const API_URL = "http://127.0.0.1:8000/api/scan/";
 
-/* ================= STATE ================= */
 let scanner;
 let processing = false;
-let lastValue = null;
-let resetTimer = null;
 
-/* ================= DOM ================= */
-const statusEl = document.getElementById("status");
-const qrBox = document.getElementById("qrBox");
-const qrValue = document.getElementById("qrValue");
-
-/* ================= UI HELPERS ================= */
-function setStatus(text, type) {
-    statusEl.textContent = text;
-    statusEl.className = `status ${type}`;
-}
-
-function showQR(value) {
-    qrValue.textContent = value;
-    qrBox.classList.remove("hidden");
-}
-
-function hideQR() {
-    qrBox.classList.add("hidden");
-    qrValue.textContent = "";
-}
-
-/* ================= BACKEND CALL ================= */
 async function verifyRegistration(regNo) {
-    const res = await fetch(API_URL, {
+    const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ registration_number: regNo })
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+            registration_number: regNo
+        })
     });
 
-    if (!res.ok) {
-        throw new Error("Server error");
-    }
-
-    return res.json();
+    return response.json();
 }
 
-/* ================= SCAN HANDLER ================= */
 async function onScanSuccess(decodedText) {
-    const regNo = decodedText.trim();
-
-    if (processing || regNo === lastValue) return;
-
+    if (processing) return;
     processing = true;
-    lastValue = regNo;
 
-    setStatus("Checking registration…", "idle");
-    showQR(regNo);
-
-    scanner.pause();
+    const regNo = decodedText.trim();
+    document.getElementById("qrValue").innerText = regNo;
+    document.getElementById("qrBox").classList.remove("hidden");
 
     try {
         const data = await verifyRegistration(regNo);
 
         if (data.status === "success") {
             setStatus(`✔ ${data.name} marked present`, "success");
-        } else if (data.status === "already_marked") {
+        }
+        else if (data.status === "already_marked") {
             setStatus(`⚠ ${data.name} already logged in`, "error");
-        } else if (data.status === "not_registered") {
+        }
+        else if (data.status === "not_registered") {
             setStatus("❌ Registration not found", "error");
-        } else {
+        }
+        else {
             setStatus("❌ Invalid QR", "error");
         }
-    } catch (err) {
-        setStatus("❌ Network / Server error", "error");
+
+    } catch {
+        setStatus("❌ Server error", "error");
     }
 
-    clearTimeout(resetTimer);
-    resetTimer = setTimeout(() => {
+    setTimeout(() => {
         processing = false;
-        lastValue = null;
-        hideQR();
         setStatus("Ready to scan", "idle");
+        document.getElementById("qrBox").classList.add("hidden");
         scanner.resume();
-    }, RESET_DELAY);
+    }, 2000);
 }
 
-/* ================= INIT ================= */
 async function initScanner() {
-    try {
-        scanner = new Html5Qrcode("reader");
-        await scanner.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
-            onScanSuccess
-        );
-    } catch (err) {
-        console.error(err);
-        setStatus("Camera permission denied", "error");
-    }
+    scanner = new Html5Qrcode("reader");
+    await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
+    );
 }
 
-window.addEventListener("load", initScanner);
+window.onload = initScanner;
 </script>
+
 </body>
 </html>

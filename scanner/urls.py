@@ -1,9 +1,7 @@
 from django.urls import path
-from . import views
-
-app_name = 'scanner'
+from .views import scan_qr, scanner_page
 
 urlpatterns = [
-    path('', views.index, name='index'),
-    path('api/scan/', views.scan_qr, name='scan_qr'),
+    path("", scanner_page),      # opens scanner
+    path("scan/", scan_qr),      # API endpoint
 ]

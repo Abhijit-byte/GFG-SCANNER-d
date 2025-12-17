@@ -45,3 +45,7 @@ def scan_qr(request):
         return JsonResponse({
             "status": "not_registered"
         }, status=404)
+    
+
+def scanner_page(request):
+    return render(request, "scanner/index.html")
