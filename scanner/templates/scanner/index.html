@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            padding: 1rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 48rem;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        #reader {
+            width: 100%;
+            border: 4px solid #3b82f6;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background-color: black;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .status.idle {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .status.success {
+            background-color: #10b981;
+            color: black;
+        }
+
+        .status.error {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .qr-data-container {
+            background-color: #2a2a2a;
+            border: 2px solid #3b82f6;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+
+        .qr-data-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .qr-data-value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1rem;
+            color: white;
+            background-color: #1a1a1a;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            word-break: break-all;
+            line-height: 1.6;
+        }
+
+        .instruction {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>QR Code Scanner</h1>
+        
+        <div id="reader"></div>
+        
+        <div id="status" class="status idle">Ready to scan</div>
+        
+        <div id="qr-data-container" class="qr-data-container hidden">
+            <div class="qr-data-label">Scanned QR Code Data:</div>
+            <div id="qr-data-value" class="qr-data-value"></div>
+        </div>
+        
+        <div class="instruction">Point your camera at a QR code to scan</div>
+    </div>
+
+    <script>
+        let scanner = null;
+        let isProcessing = false;
+        let resetTimeout = null;
+
+        const statusEl = document.getElementById('status');
+        const qrDataContainer = document.getElementById('qr-data-container');
+        const qrDataValue = document.getElementById('qr-data-value');
+
+        function setStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        function showQRData(data) {
+            qrDataValue.textContent = data;
+            qrDataContainer.classList.remove('hidden');
+        }
+
+        function hideQRData() {
+            qrDataContainer.classList.add('hidden');
+            qrDataValue.textContent = '';
+        }
+
+        async function sendToBackend(qrData) {
+            try {
+                const response = await fetch('/api/scan/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ qr_data: qrData })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    console.log('Saved to database:', result);
+                    return true;
+                } else {
+                    console.error('Backend error:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                return false;
+            }
+        }
+
+        function onScanSuccess(decodedText) {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            console.log('QR Code scanned:', decodedText);
+            
+            // Show success immediately
+            setStatus('Scan successful!', 'success');
+            showQRData(decodedText);
+            
+            // Pause scanner
+            if (scanner) {
+                scanner.pause();
+            }
+            
+            // Send to backend
+            sendToBackend(decodedText);
+            
+            // Reset after 2 seconds
+            clearTimeout(resetTimeout);
+            resetTimeout = setTimeout(() => {
+                setStatus('Ready to scan', 'idle');
+                hideQRData();
+                if (scanner) {
+                    scanner.resume();
+                }
+                isProcessing = false;
+            }, 2000);
+        }
+
+        function onScanFailure() {
+            // Silent - continuous scanning
+        }
+
+        // Initialize scanner
+        async function initScanner() {
+            try {
+                scanner = new Html5Qrcode("reader");
+                
+                await scanner.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                        aspectRatio: 1.0
+                    },
+                    onScanSuccess,
+                    onScanFailure
+                );
+            } catch (err) {
+                console.error('Error starting camera:', err);
+                setStatus('Camera access denied', 'error');
+            }
+        }
+
+        // Start scanner when page loads
+        window.addEventListener('load', initScanner);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (scanner) {
+                scanner.stop().catch(err => console.error('Error stopping scanner:', err));
+            }
+            clearTimeout(resetTimeout);
+        });
+    </script>
+</body>
+</html>
