@@ -125,7 +125,7 @@ async function onScanSuccess(decodedText) {
         console.log("Backend response:", data);
 
         if (data.status === "success") {
-            setStatus(`✅ ${data.name} - Attendance marked!`, "success");
+            setStatus(`✅ ${data.name}${data.registration_number} - Attendance marked!`, "success");
         }
         else if (data.status === "already_marked") {
             setStatus(`⚠️ ${data.name} - Already marked!`, "warning");
