@@ -49,6 +49,8 @@
         .idle { background: #3b82f6; }
         .success { background: #10b981; color: black; }
         .error { background: #ef4444; }
+        .warning { background: #f59e0b; color: black; }
+        .loading { background: #6366f1; }
 
         .qr-box {
             background: #2a2a2a;
@@ -58,12 +60,18 @@
         }
 
         .hidden { display: none; }
+
+        .info-text {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
 <body>
 <div class="container">
-    <h1>QR Attendance Scanner</h1>
+    <h1>📱 QR Attendance Scanner</h1>
 
     <div id="reader"></div>
 
@@ -74,27 +82,31 @@
         <div id="qrValue"></div>
     </div>
 
-    <p style="text-align:center;color:#9ca3af;">Point camera at QR code</p>
+    <p class="info-text">Point camera at QR code</p>
 </div>
 
 <script>
-const API_URL = "/api/scan/";
-
 let scanner;
 let processing = false;
 
 async function verifyRegistration(regNo) {
-    const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-            registration_number: regNo
-        })
-    });
+    try {
+        // Send as FormData to match Django's request.POST.get()
+        const response = await fetch("/api/scan/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                registration_number: regNo
+            })
+        });
 
-    return response.json();
+        return await response.json();
+    } catch (error) {
+        console.error("Fetch error:", error);
+        return { status: "error", message: "Network error" };
+    }
 }
 
 async function onScanSuccess(decodedText) {
@@ -105,41 +117,63 @@ async function onScanSuccess(decodedText) {
     document.getElementById("qrValue").innerText = regNo;
     document.getElementById("qrBox").classList.remove("hidden");
 
+    // Show loading state
+    setStatus("⏳ Verifying...", "loading");
+
     try {
         const data = await verifyRegistration(regNo);
+        console.log("Backend response:", data);
 
         if (data.status === "success") {
-            setStatus(`✔ ${data.name} marked present`, "success");
+            setStatus(`✅ ${data.name} - Attendance marked!`, "success");
         }
         else if (data.status === "already_marked") {
-            setStatus(`⚠ ${data.name} already logged in`, "error");
+            setStatus(`⚠️ ${data.name} - Already marked!`, "warning");
         }
         else if (data.status === "not_registered") {
             setStatus("❌ Registration not found", "error");
         }
+        else if (data.status === "invalid_qr") {
+            setStatus("❌ Invalid QR code", "error");
+        }
         else {
-            setStatus("❌ Invalid QR", "error");
+            setStatus("❌ Error: " + (data.message || "Unknown error"), "error");
         }
 
-    } catch {
+    } catch (error) {
+        console.error("Error:", error);
         setStatus("❌ Server error", "error");
     }
 
+    // Reset after 3 seconds
     setTimeout(() => {
         processing = false;
         setStatus("Ready to scan", "idle");
         document.getElementById("qrBox").classList.add("hidden");
         scanner.resume();
-    }, 2000);
+    }, 3000);
+}
+
+function setStatus(text, type) {
+    const statusEl = document.getElementById("status");
+    statusEl.textContent = text;
+    statusEl.className = `status ${type}`;
 }
 
 async function initScanner() {
-    scanner = new Html5Qrcode("reader");
-    await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        onScanSuccess
-    );
+    try {
+        scanner = new Html5Qrcode("reader");
+        await scanner.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            onScanSuccess,
+            (error) => console.log("Scan error:", error)
+        );
+        setStatus("Ready to scan", "idle");
+    } catch (error) {
+        console.error("Scanner init error:", error);
+        setStatus("❌ Camera not accessible", "error");
+    }
 }
 
 window.onload = initScanner;
