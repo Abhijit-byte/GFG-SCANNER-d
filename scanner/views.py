@@ -34,7 +34,7 @@ def scan_qr(request):
 
         attendee.attended = True
         attendee.checked_in_at = timezone.now()
-        attendee.save(update_fields=["attended", "checked_in_at"])
+        attendee.save()
 
         return JsonResponse({
             "status": "success",
