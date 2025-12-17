@@ -126,6 +126,8 @@
     </div>
 
     <script>
+        const API_URL = "https://gfg-scanner-d.onrender.com/";
+
         let scanner = null;
         let isProcessing = false;
         let resetTimeout = null;
@@ -149,60 +151,59 @@
             qrDataValue.textContent = '';
         }
 
-        async function sendToBackend(qrData) {
-            try {
-                const response = await fetch('/api/scan/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ qr_data: qrData })
-                });
+        async function sendToBackend(registrationNumber) {
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            registration_number: registrationNumber
+        })
+    });
 
-                const result = await response.json();
-                
-                if (response.ok) {
-                    console.log('Saved to database:', result);
-                    return true;
-                } else {
-                    console.error('Backend error:', result.error);
-                    return false;
-                }
-            } catch (error) {
-                console.error('Network error:', error);
-                return false;
-            }
-        }
+    return response.json();
+}
+
 
         function onScanSuccess(decodedText) {
-            if (isProcessing) return;
-            
-            isProcessing = true;
-            console.log('QR Code scanned:', decodedText);
-            
-            // Show success immediately
-            setStatus('Scan successful!', 'success');
-            showQRData(decodedText);
-            
-            // Pause scanner
-            if (scanner) {
-                scanner.pause();
+    if (isProcessing) return;
+
+    isProcessing = true;
+    console.log('QR Code scanned:', decodedText);
+
+    setStatus('Checking registration...', 'idle');
+    showQRData(decodedText);
+
+    if (scanner) scanner.pause();
+
+    sendToBackend(decodedText)
+        .then(data => {
+            if (data.status === "success") {
+                setStatus(`✔ ${data.name} marked present`, 'success');
             }
-            
-            // Send to backend
-            sendToBackend(decodedText);
-            
-            // Reset after 2 seconds
-            clearTimeout(resetTimeout);
-            resetTimeout = setTimeout(() => {
-                setStatus('Ready to scan', 'idle');
-                hideQRData();
-                if (scanner) {
-                    scanner.resume();
-                }
-                isProcessing = false;
-            }, 2000);
-        }
+            else if (data.status === "already_marked") {
+                setStatus(`⚠ ${data.name} already logged in`, 'error');
+            }
+            else if (data.status === "not_registered") {
+                setStatus('❌ Registration not found', 'error');
+            }
+            else {
+                setStatus('❌ Invalid QR code', 'error');
+            }
+        })
+        .catch(() => {
+            setStatus('❌ Network error', 'error');
+        });
+
+    clearTimeout(resetTimeout);
+    resetTimeout = setTimeout(() => {
+        setStatus('Ready to scan', 'idle');
+        hideQRData();
+        if (scanner) scanner.resume();
+        isProcessing = false;
+    }, 2500);
+}
 
         function onScanFailure() {
             // Silent - continuous scanning

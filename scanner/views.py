@@ -10,25 +10,37 @@ def index(request):
     """Render the QR scanner page."""
     return render(request, 'scanner/index.html')
 
-@csrf_exempt
+
 @require_http_methods(["POST"])
+@csrf_exempt
 def scan_qr(request):
-    """Handle QR scan data."""
+    if request.method != "POST":
+        return JsonResponse({"status": "method_not_allowed"}, status=405)
+
+    reg_no = request.POST.get("registration_number")
+
+    if not reg_no:
+        return JsonResponse({"status": "invalid_qr"}, status=400)
+
     try:
-        data = json.loads(request.body)
-        qr_data = data.get('qr_data')
-        
-        if not qr_data:
-            return JsonResponse({'error': 'No QR data provided'}, status=400)
-        
-        # Save to database
-        qr_scan = Attendee.objects.create(qr_data=qr_data)
-        
+        attendee = Attendee.objects.get(registration_number=reg_no)
+
+        if attendee.attended:
+            return JsonResponse({
+                "status": "already_marked",
+                "name": attendee.name
+            })
+
+        attendee.attended = True
+        attendee.checked_in_at = timezone.now()
+        attendee.save(update_fields=["attended", "checked_in_at"])
+
         return JsonResponse({
-            'success': True,
-            'message': 'QR code scanned successfully',
-            'data': qr_data,
-            'id': qr_scan.id
+            "status": "success",
+            "name": attendee.name
         })
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+
+    except Attendee.DoesNotExist:
+        return JsonResponse({
+            "status": "not_registered"
+        }, status=404)
