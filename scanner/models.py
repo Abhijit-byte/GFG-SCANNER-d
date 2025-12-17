@@ -28,8 +28,7 @@ class Attendee(models.Model):
 
     class Meta:
         ordering = ["registration_number"]
-        verbose_name = "Attendee"
-        verbose_name_plural = "Attendees"
+
 
     def __str__(self):
         return f"{self.registration_number} - {self.name}"
