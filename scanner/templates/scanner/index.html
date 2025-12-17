@@ -4,426 +4,146 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QR Attendance Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            padding: 1rem;
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
         }
 
         .container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-
-        .scanner-section {
-            margin-bottom: 30px;
-        }
-
-        .scanner-input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            text-align: center;
-            transition: border-color 0.3s ease;
-        }
-
-        .scanner-input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 5px rgba(102, 126, 234, 0.5);
-        }
-
-        .scanner-input::placeholder {
-            color: #999;
-        }
-
-        .info-text {
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-
-        .response-section {
-            margin-top: 30px;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: none;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-            display: block;
-        }
-
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            display: block;
-        }
-
-        .message.warning {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-            display: block;
-        }
-
-        .attendance-log {
-            margin-top: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
-        }
-
-        .attendance-log-empty {
-            text-align: center;
-            color: #999;
-            padding: 20px;
-            font-size: 14px;
-        }
-
-        .log-entry {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
+            max-width: 720px;
+            margin: auto;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        h1 { text-align: center; }
+
+        #reader {
+            width: 100%;
+            border: 4px solid #3b82f6;
+            border-radius: 12px;
+            background: black;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
             align-items: center;
+            justify-content: center;
         }
 
-        .log-entry:last-child {
-            border-bottom: none;
-        }
+        .idle { background: #3b82f6; }
+        .success { background: #10b981; color: black; }
+        .error { background: #ef4444; }
 
-        .log-entry.success {
-            background-color: #f0f7f0;
-            color: #155724;
-        }
-
-        .log-entry.error {
-            background-color: #fdf6f6;
-            color: #721c24;
-        }
-
-        .log-entry.warning {
-            background-color: #fffef0;
-            color: #856404;
-        }
-
-        .timestamp {
-            font-size: 12px;
-            color: #999;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-
-        .stat {
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .clear-button {
-            width: 100%;
-            padding: 10px;
-            margin-top: 15px;
-            background-color: #f0f0f0;
-            border: 1px solid #ddd;
+        .qr-box {
+            background: #2a2a2a;
+            border: 2px solid #3b82f6;
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            color: #666;
-            transition: background-color 0.3s ease;
+            padding: 1rem;
         }
 
-        .clear-button:hover {
-            background-color: #e0e0e0;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #667eea;
-            margin-left: 5px;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 0.3;
-            }
-            50% {
-                opacity: 1;
-            }
-        }
+        .hidden { display: none; }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <h1>📱 QR Attendance Scanner</h1>
-        <p class="subtitle">Scan QR codes to mark attendance</p>
+<div class="container">
+    <h1>QR Attendance Scanner</h1>
 
-        <div class="scanner-section">
-            <input 
-                type="text" 
-                id="qrInput" 
-                class="scanner-input" 
-                placeholder="Scan QR code here..."
-                autocomplete="off"
-                autofocus
-            >
-            <p class="info-text">⚡ Focus on this field and scan the QR code</p>
-        </div>
+    <div id="reader"></div>
 
-        <div class="response-section">
-            <div id="message" class="message"></div>
-        </div>
+    <div id="status" class="status idle">Ready to scan</div>
 
-        <div class="attendance-log">
-            <div id="logContainer" class="attendance-log-empty">
-                No scans yet. Start scanning QR codes...
-            </div>
-        </div>
-
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-number" id="successCount">0</div>
-                <div class="stat-label">✅ Marked</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number" id="errorCount">0</div>
-                <div class="stat-label">❌ Errors</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number" id="duplicateCount">0</div>
-                <div class="stat-label">⚠️ Duplicates</div>
-            </div>
-        </div>
-
-        <button class="clear-button" id="clearButton">Clear Log</button>
+    <div id="qrBox" class="qr-box hidden">
+        <strong>Scanned Code:</strong>
+        <div id="qrValue"></div>
     </div>
 
-    <script>
-        // Track statistics
-        const stats = {
-            success: 0,
-            error: 0,
-            duplicate: 0
-        };
+    <p style="text-align:center;color:#9ca3af;">Point camera at QR code</p>
+</div>
 
-        const logEntries = [];
+<script>
+const API_URL = "http://127.0.0.1:8000/api/scan/";
 
-        // Get elements
-        const qrInput = document.getElementById('qrInput');
-        const messageDiv = document.getElementById('message');
-        const logContainer = document.getElementById('logContainer');
-        const successCountEl = document.getElementById('successCount');
-        const errorCountEl = document.getElementById('errorCount');
-        const duplicateCountEl = document.getElementById('duplicateCount');
-        const clearButton = document.getElementById('clearButton');
+let scanner;
+let processing = false;
 
-        // Handle QR scan
-        qrInput.addEventListener('change', async function() {
-            const qrCode = this.value.trim();
+async function verifyRegistration(regNo) {
+    const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+            registration_number: regNo
+        })
+    });
 
-            if (!qrCode) {
-                showMessage('Please scan a valid QR code', 'error');
-                return;
-            }
+    return response.json();
+}
 
-            // Clear input for next scan
-            this.value = '';
+async function onScanSuccess(decodedText) {
+    if (processing) return;
+    processing = true;
 
-            // Show loading state
-            showMessage('Processing...', 'warning');
+    const regNo = decodedText.trim();
+    document.getElementById("qrValue").innerText = regNo;
+    document.getElementById("qrBox").classList.remove("hidden");
 
-            try {
-                // Send QR data to backend
-                const response = await fetch('/scan_qr/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        registration_number: qrCode
-                    })
-                });
+    try {
+        const data = await verifyRegistration(regNo);
 
-                const data = await response.json();
-
-                // Handle different responses
-                if (data.status === 'success') {
-                    showMessage(data.message, 'success');
-                    addLogEntry(data.name, 'success', `✅ Attendance marked`);
-                    stats.success++;
-                } else if (data.status === 'already_marked') {
-                    showMessage(data.message, 'warning');
-                    addLogEntry(data.name, 'warning', '⚠️ Already marked');
-                    stats.duplicate++;
-                } else if (data.status === 'not_registered') {
-                    showMessage(data.message, 'error');
-                    addLogEntry(`Reg: ${qrCode}`, 'error', '❌ Not registered');
-                    stats.error++;
-                } else if (data.status === 'invalid_qr') {
-                    showMessage(data.message, 'error');
-                    addLogEntry('Invalid', 'error', '❌ Invalid QR');
-                    stats.error++;
-                } else {
-                    showMessage(data.message || 'Unknown error', 'error');
-                    stats.error++;
-                }
-
-                updateStats();
-
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('⚠️ Server error. Please try again.', 'error');
-                addLogEntry('Error', 'error', '❌ Request failed');
-                stats.error++;
-                updateStats();
-            }
-
-            // Refocus input for next scan
-            qrInput.focus();
-        });
-
-        // Show message
-        function showMessage(text, type) {
-            messageDiv.textContent = text;
-            messageDiv.className = `message ${type}`;
-            
-            // Auto-clear after 4 seconds if not error
-            if (type !== 'error') {
-                setTimeout(() => {
-                    messageDiv.className = 'message';
-                }, 4000);
-            }
+        if (data.status === "success") {
+            setStatus(`✔ ${data.name} marked present`, "success");
+        }
+        else if (data.status === "already_marked") {
+            setStatus(`⚠ ${data.name} already logged in`, "error");
+        }
+        else if (data.status === "not_registered") {
+            setStatus("❌ Registration not found", "error");
+        }
+        else {
+            setStatus("❌ Invalid QR", "error");
         }
 
-        // Add to log
-        function addLogEntry(name, type, status) {
-            const now = new Date().toLocaleTimeString();
-            logEntries.unshift({ name, type, status, time: now });
+    } catch {
+        setStatus("❌ Server error", "error");
+    }
 
-            // Keep only last 50 entries
-            if (logEntries.length > 50) {
-                logEntries.pop();
-            }
+    setTimeout(() => {
+        processing = false;
+        setStatus("Ready to scan", "idle");
+        document.getElementById("qrBox").classList.add("hidden");
+        scanner.resume();
+    }, 2000);
+}
 
-            renderLog();
-        }
+async function initScanner() {
+    scanner = new Html5Qrcode("reader");
+    await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
+    );
+}
 
-        // Render log
-        function renderLog() {
-            if (logEntries.length === 0) {
-                logContainer.innerHTML = '<div class="attendance-log-empty">No scans yet...</div>';
-                return;
-            }
+window.onload = initScanner;
+</script>
 
-            logContainer.innerHTML = logEntries.map(entry => `
-                <div class="log-entry ${entry.type}">
-                    <div>
-                        <strong>${entry.name}</strong> - ${entry.status}
-                    </div>
-                    <span class="timestamp">${entry.time}</span>
-                </div>
-            `).join('');
-        }
-
-        // Update stats
-        function updateStats() {
-            successCountEl.textContent = stats.success;
-            errorCountEl.textContent = stats.error;
-            duplicateCountEl.textContent = stats.duplicate;
-        }
-
-        // Clear log
-        clearButton.addEventListener('click', function() {
-            if (confirm('Clear all logs?')) {
-                logEntries.length = 0;
-                stats.success = 0;
-                stats.error = 0;
-                stats.duplicate = 0;
-                renderLog();
-                updateStats();
-                messageDiv.className = 'message';
-            }
-        });
-
-        // Focus on input on page load
-        qrInput.focus();
-    </script>
 </body>
 </html>
