@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .models import Attendee
+from django.db.models import Q
 import json
 
 def index(request):
@@ -29,16 +30,22 @@ def scan_qr(request):
         
         print(f"[DEBUG] Scanning registration: {reg_no}")  # Debug log
         
-        # Check if attendee exists
+        # Check if attendee exists (case-insensitive search)
         try:
+            # Try exact match first
             attendee = Attendee.objects.get(registration_number=reg_no)
-            print(f"[DEBUG] Found: {attendee.name}, Attended: {attendee.attended}")
         except Attendee.DoesNotExist:
-            print(f"[DEBUG] Not found in database")
-            return JsonResponse({
-                "status": "not_registered",
-                "message": f"Registration #{reg_no} not found"
-            }, status=404)
+            # Try case-insensitive match if exact fails
+            try:
+                attendee = Attendee.objects.get(registration_number__iexact=reg_no)
+            except Attendee.DoesNotExist:
+                print(f"[DEBUG] Not found in database")
+                return JsonResponse({
+                    "status": "not_registered",
+                    "message": f"Registration #{reg_no} not found"
+                }, status=404)
+        
+        print(f"[DEBUG] Found: {attendee.name}, Attended: {attendee.attended}")
         
         # Check if already marked
         if attendee.attended:
