@@ -183,7 +183,7 @@ async function onScanSuccess(decodedText) {
         setStatus("Ready to scan", "idle");
         document.getElementById("qrBox").classList.add("hidden");
         scanner.resume();
-    }, 1521);
+    }, 999;
 }
 
 function setStatus(text, type) {
